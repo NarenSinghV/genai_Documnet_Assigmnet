@@ -23,6 +23,8 @@ dist/
 
 # Environment variables
 .env
+.env.*    # ignore .env.local, .env.test, etc.
+# Do not commit files that contain secrets (API keys, credentials)
 
 # Mac
 .DS_Store

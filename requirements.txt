@@ -1,0 +1,5 @@
+# requirements.txt
+# List of project dependencies. Do NOT put secrets or environment variables here.
+# Keep your .env file (containing secrets) out of source control — it's already in .gitignore.
+
+pip-requirements
