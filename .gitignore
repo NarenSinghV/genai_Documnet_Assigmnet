@@ -1,0 +1,31 @@
+# Byte-compiled / distribution / packaging
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# VS Code
+.vscode/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE files
+*.iml
+
+# Environment variables
+.env
+
+# Mac
+.DS_Store
+
+# Logs
+*.log
