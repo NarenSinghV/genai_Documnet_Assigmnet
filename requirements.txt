@@ -8,3 +8,9 @@ chromadb
 openai
 PyPDF2
 python-dotenv
+pandas
+
+# dev/test
+pytest
+flake8
+coverage

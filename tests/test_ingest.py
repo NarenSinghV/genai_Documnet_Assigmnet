@@ -19,3 +19,6 @@ def test_chunk_text():
     text = "\n".join(["line" * 200])
     chunks = chunk_text(text, chunk_size=100, chunk_overlap=10)
     assert len(chunks) > 0
+
+# Note: vector store tests that use OpenAI embeddings or Chroma are integration tests and
+# may be skipped in CI unless API keys and services are available.

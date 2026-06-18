@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GenAI Document Q&A</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width: 900px; margin: 2rem auto; }
+    input, button, textarea { font-size: 1rem; }
+    .file-row { margin-bottom: 1rem; }
+    .response { white-space: pre-wrap; background: #f7f7f7; padding: 0.5rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>GenAI Document Q&A</h1>
+
+  <section>
+    <h2>Upload document</h2>
+    <div class="file-row">
+      <input type="file" id="fileInput" />
+      <button id="uploadBtn">Upload</button>
+    </div>
+    <div id="uploadResult"></div>
+  </section>
+
+  <section>
+    <h2>Query</h2>
+    <form id="queryForm">
+      <input type="text" id="queryInput" placeholder="Ask a question..." style="width:80%" />
+      <button type="submit">Query (RAG)</button>
+    </form>
+    <div id="answer" class="response"></div>
+  </section>
+
+  <script>
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const f = document.getElementById('fileInput').files[0];
+      if (!f) return alert('Choose a file first');
+      const fd = new FormData();
+      fd.append('file', f);
+      const res = await fetch('/upload', { method: 'POST', body: fd });
+      const j = await res.json();
+      document.getElementById('uploadResult').innerText = JSON.stringify(j, null, 2);
+    });
+
+    document.getElementById('queryForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = document.getElementById('queryInput').value;
+      if (!q) return;
+      const fd = new FormData();
+      fd.append('q', q);
+      const res = await fetch('/query_rag', { method: 'POST', body: fd });
+      const j = await res.json();
+      document.getElementById('answer').innerText = JSON.stringify(j, null, 2);
+    });
+  </script>
+</body>
+</html>
