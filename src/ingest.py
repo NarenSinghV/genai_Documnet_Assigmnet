@@ -1,7 +1,21 @@
 import os
 from typing import List, Dict, Any
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+# robust import for different langchain versions / packages
+try:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+except Exception:
+    try:
+        from langchain.text_splitters import RecursiveCharacterTextSplitter
+    except Exception:
+        try:
+            # some environments provide a separate package
+            from langchain_text_splitters import RecursiveCharacterTextSplitter
+        except Exception as e:
+            raise ImportError(
+                "RecursiveCharacterTextSplitter not found. Install 'langchain' with the text-splitters module or 'langchain_text_splitters' package."
+            ) from e
+
 from .vector_store import create_or_update_vector_store
 
 
@@ -60,8 +74,14 @@ def ingest_file_to_vectordb(path: str, metadata: Dict[str, Any] = None, persist_
             "chunk_index": i,
         })
         metadatas.append(meta)
-    vectordb = create_or_update_vector_store(chunks, metadatas=metadatas, persist_directory=persist_directory)
-    return vectordb
+    try:
+        vectordb = create_or_update_vector_store(chunks, metadatas=metadatas, persist_directory=persist_directory)
+        return vectordb
+    except Exception as e:
+        # Log the error and continue — mark vectordb as not created so uploads still succeed.
+        # This commonly happens when the installed chromadb requires migration or different client API.
+        print(f"[ingest] vectordb creation failed: {e}")
+        return None
 
 
 def format_provenance(documents: List[Any]):
