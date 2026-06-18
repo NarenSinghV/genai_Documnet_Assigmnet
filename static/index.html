@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GenAI Document Q&A (React)</title>
+    <style>
+      body { font-family: system-ui, Arial; max-width: 900px; margin: 2rem auto; }
+      input, button, textarea { font-size: 1rem; }
+      .file-row { margin-bottom: 1rem; }
+      .response { white-space: pre-wrap; background: #f7f7f7; padding: 0.5rem; border-radius: 4px; }
+      .row { display:flex; gap:8px; align-items:center; }
+    </style>
+    <!-- React via unpkg and Babel to allow JSX in browser for a minimal dev UI -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState } = React;
+
+      function App(){
+        const [file, setFile] = useState(null);
+        const [uploadResult, setUploadResult] = useState(null);
+        const [query, setQuery] = useState('');
+        const [answer, setAnswer] = useState(null);
+        const [apikey, setApikey] = useState('');
+        const [loading, setLoading] = useState(false);
+
+        async function handleUpload(){
+          if(!file) return alert('Select a file');
+          const fd = new FormData();
+          fd.append('file', file);
+          const headers = apikey ? { 'x-api-key': apikey } : {};
+          setLoading(true);
+          try{
+            const res = await fetch('/upload', { method: 'POST', body: fd, headers });
+            const j = await res.json();
+            setUploadResult(j);
+          }catch(e){
+            setUploadResult({ error: String(e) });
+          }finally{ setLoading(false); }
+        }
+
+        async function handleQuery(e){
+          e && e.preventDefault();
+          if(!query) return;
+          const fd = new FormData();
+          fd.append('q', query);
+          const headers = apikey ? { 'x-api-key': apikey } : {};
+          setLoading(true);
+          try{
+            const res = await fetch('/query_rag', { method: 'POST', body: fd, headers });
+            const j = await res.json();
+            setAnswer(j);
+          }catch(e){
+            setAnswer({ error: String(e) });
+          }finally{ setLoading(false); }
+        }
+
+        return (
+          <div>
+            <h1>GenAI Document Q&amp;A (React)</h1>
+
+            <section>
+              <h2>Settings</h2>
+              <div className="row">
+                <input placeholder="Optional API key for upload" value={apikey} onChange={e=>setApikey(e.target.value)} style={{width:'60%'}} />
+                <button onClick={()=>{ setApikey(''); }}>Clear</button>
+              </div>
+            </section>
+
+            <section>
+              <h2>Upload document</h2>
+              <div className="file-row row">
+                <input type="file" onChange={e=>setFile(e.target.files[0])} />
+                <button onClick={handleUpload} disabled={loading}>Upload</button>
+              </div>
+              {uploadResult && <div className="response">{JSON.stringify(uploadResult, null, 2)}</div>}
+            </section>
+
+            <section>
+              <h2>Query (RAG)</h2>
+              <form onSubmit={handleQuery} style={{display:'flex', gap:8}}>
+                <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ask a question..." style={{flex:1}} />
+                <button type="submit" disabled={loading}>Ask</button>
+              </form>
+              {answer && <div className="response">{JSON.stringify(answer, null, 2)}</div>}
+            </section>
+
+            <footer style={{marginTop:20,fontSize:'0.9rem',color:'#666'}}>
+              <div>Local dev note: for API-key protected uploads set an API key in `.env` on the server and paste it into the Settings box above.</div>
+            </footer>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+    </script>
+  </body>
+</html>

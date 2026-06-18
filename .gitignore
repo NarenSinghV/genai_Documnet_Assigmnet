@@ -23,9 +23,25 @@ dist/
 
 # Environment variables
 .env
+.env.*    # ignore .env.local, .env.test, etc.
+# Do not commit files that contain secrets (API keys, credentials)
+
+# Chroma local persistence
+chromadb/
+*.sqlite3
+*.sqlite
+*.db
+
+# Uploads and runtime artifacts
+uploads/
+*.log
 
 # Mac
 .DS_Store
 
-# Logs
-*.log
+# Pytest
+.pytest_cache/
+
+# Other
+*.bak
+*.swp

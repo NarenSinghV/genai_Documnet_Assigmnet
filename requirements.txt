@@ -1,0 +1,16 @@
+# requirements.txt
+# List of project dependencies used by the scaffold. Do NOT put secrets or environment variables here.
+
+fastapi
+uvicorn
+langchain
+chromadb
+openai
+PyPDF2
+python-dotenv
+pandas
+
+# dev/test
+pytest
+flake8
+coverage
