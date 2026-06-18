@@ -1,14 +1,15 @@
 import os
-from typing import List
+from typing import List, Dict, Any
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from .vector_store import create_or_update_vector_store
 
 
 def load_text_from_file(path: str) -> str:
     _, ext = os.path.splitext(path)
     ext = ext.lower()
     if ext == ".pdf":
-        # simple helper: if you need more robust PDF parsing, add PyPDF2 or pdfplumber
+        # robust PDF parsing with PyPDF2
         try:
             from PyPDF2 import PdfReader
             reader = PdfReader(path)
@@ -16,11 +17,60 @@ def load_text_from_file(path: str) -> str:
             return "\n".join(texts)
         except Exception:
             return ""
+    elif ext in [".csv"]:
+        try:
+            import pandas as pd
+            df = pd.read_csv(path)
+            return df.to_csv(index=False)
+        except Exception:
+            return ""
+    elif ext in [".xls", ".xlsx"]:
+        try:
+            import pandas as pd
+            df = pd.read_excel(path)
+            return df.to_csv(index=False)
+        except Exception:
+            return ""
     else:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read()
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        except Exception:
+            return ""
 
 
 def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[str]:
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return splitter.split_text(text)
+
+
+def ingest_file_to_vectordb(path: str, metadata: Dict[str, Any] = None, persist_directory: str = "./chromadb"):
+    """Load file, chunk text with metadata, and add to persistent vector DB."""
+    metadata = metadata or {}
+    text = load_text_from_file(path)
+    if not text:
+        return None
+    chunks = chunk_text(text)
+    # build metadata per chunk for provenance
+    metadatas = []
+    for i, c in enumerate(chunks):
+        meta = dict(metadata)
+        meta.update({
+            "source": os.path.basename(path),
+            "chunk_index": i,
+        })
+        metadatas.append(meta)
+    vectordb = create_or_update_vector_store(chunks, metadatas=metadatas, persist_directory=persist_directory)
+    return vectordb
+
+
+def format_provenance(documents: List[Any]):
+    """Format a list of retrieved documents into short provenance entries."""
+    out = []
+    for d in documents:
+        meta = getattr(d, "metadata", {}) if hasattr(d, "metadata") else {}
+        src = meta.get("source") or meta.get("id") or "unknown"
+        chunk_idx = meta.get("chunk_index")
+        snippet = (getattr(d, "page_content", None) or str(d))[:300]
+        out.append({"source": src, "chunk_index": chunk_idx, "snippet": snippet})
+    return out
