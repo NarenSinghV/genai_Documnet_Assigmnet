@@ -113,7 +113,3 @@ Note: OpenAI integration is present in the repository but commented/outlined so 
 - `src/vector_store.py` — embedding provider and Chroma wrapper
 - `src/agents.py` — agent orchestration (retrieval, reasoner, verifier)
 - `static/` — simple frontend for manual testing
-
-## License
-
-Add your preferred license and project details.

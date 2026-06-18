@@ -21,9 +21,30 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 def _get_embeddings():
-    return HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+    # Prefer a local HuggingFace SentenceTransformer for offline embeddings.
+    try:
+        from sentence_transformers import SentenceTransformer
+
+        class HFEmbeddingsWrapper:
+            def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+                self.model = SentenceTransformer(model_name)
+
+            def embed_documents(self, texts):
+                # returns list[list[float]]
+                vecs = self.model.encode(list(texts), show_progress_bar=False, convert_to_numpy=True)
+                return [list(map(float, v)) for v in vecs]
+
+            def embed_query(self, text: str):
+                vec = self.model.encode([text], show_progress_bar=False, convert_to_numpy=True)[0]
+                return list(map(float, vec))
+
+        return HFEmbeddingsWrapper()
+    except Exception:
+        # Fall back to OpenAI embeddings (if available)
+        try:
+            return OpenAIEmbeddings()
+        except Exception:
+            raise ImportError("No embedding provider available. Install 'sentence-transformers' or configure OpenAI embeddings.")
 
 # -------------------------
 # Load existing DB
