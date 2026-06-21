@@ -1,0 +1,60 @@
+[2026-06-21 21:55:07] INFO [genai.<module>:344] -> GenAI multi-agent application logging framework initiated successfully.
+[2026-06-21 21:55:21] INFO [genai.<module>:132] -> ingest module loaded
+[2026-06-21 21:55:39] INFO [genai.ingest_file_to_vectordb:176] -> Ingesting file: uploads\700b39bd-c519-4ece-8bd1-dc990798d98e_Test_upload.pdf
+[2026-06-21 21:55:39] INFO [genai.ingest_file_to_vectordb:182] -> Created 3 chunks for uploads\700b39bd-c519-4ece-8bd1-dc990798d98e_Test_upload.pdf
+[2026-06-21 21:55:47] INFO [genai.ingest_file_to_vectordb:195] -> Vector DB updated for uploads\700b39bd-c519-4ece-8bd1-dc990798d98e_Test_upload.pdf
+[2026-06-21 21:55:50] INFO [genai.query_rag:437] -> --- New Inbound Request Received ---
+[2026-06-21 21:55:50] INFO [genai.query_rag:438] -> HTTP Payload Details -> Query: 'Summarise the document in 10 simple points', File Reference Session ID: None
+[2026-06-21 21:55:56] INFO [genai.run:225] -> [AgentManager] Starting Multi-Agent Pipeline Execution for query: 'Summarise the document in 10 simple points'
+[2026-06-21 21:55:56] INFO [genai.run:228] -> [RetrievalAgent] Fetching semantic contexts matching query. Target file filter: None
+[2026-06-21 21:55:56] INFO [genai.run:235] -> [RetrievalAgent] Successfully gathered 5 relevant context blocks.
+[2026-06-21 21:55:56] INFO [genai.run:239] -> [ReasoningAgent] Dispatching synchronized structured content payload to Gemini core engine...
+[2026-06-21 21:55:56] INFO [genai.run:241] -> [ReasoningAgent] Received raw execution text stream response (Length: 78 characters).
+[2026-06-21 21:55:56] INFO [genai.verify:205] -> [VerifierAgent] Beginning hallucination verification loop...
+[2026-06-21 21:55:56] INFO [genai.verify:215] -> [VerifierAgent] Completed verification. Tokens matched: 1/8. Calculated Score: 0.12
+[2026-06-21 21:55:56] INFO [genai.run:255] -> [AgentManager] Multi-Agent Workflow cycle terminated successfully.
+[2026-06-21 21:55:56] INFO [genai.query_rag:489] -> --- Final Sanitized User-Facing Chatbot Answer ---
+[2026-06-21 21:55:56] INFO [genai.query_rag:490] -> 
+Configuration Error: Please insert your valid Gemini API key inside agents.py.
+[2026-06-21 21:55:56] INFO [genai.query_rag:491] -> --------------------------------------------------
+[2026-06-21 22:01:03] INFO [genai.<module>:344] -> GenAI multi-agent application logging framework initiated successfully.
+[2026-06-21 22:01:19] INFO [genai.<module>:132] -> ingest module loaded
+[2026-06-21 22:01:39] INFO [genai.ingest_file_to_vectordb:176] -> Ingesting file: uploads\39c6dbba-8aac-401c-813e-2133ca9e338a_Test_upload.pdf
+[2026-06-21 22:01:40] INFO [genai.ingest_file_to_vectordb:182] -> Created 3 chunks for uploads\39c6dbba-8aac-401c-813e-2133ca9e338a_Test_upload.pdf
+[2026-06-21 22:01:47] INFO [genai.ingest_file_to_vectordb:195] -> Vector DB updated for uploads\39c6dbba-8aac-401c-813e-2133ca9e338a_Test_upload.pdf
+[2026-06-21 22:01:52] INFO [genai.query_rag:437] -> --- New Inbound Request Received ---
+[2026-06-21 22:01:52] INFO [genai.query_rag:438] -> HTTP Payload Details -> Query: 'Summarise the document in 10 simple points', File Reference Session ID: None
+[2026-06-21 22:01:58] INFO [genai.run:189] -> [AgentManager] Starting Multi-Agent Pipeline Execution for query: 'Summarise the document in 10 simple points'
+[2026-06-21 22:01:58] INFO [genai.verify:171] -> [VerifierAgent] Beginning hallucination verification loop...
+[2026-06-21 22:01:58] INFO [genai.verify:179] -> [VerifierAgent] Completed verification. Score: 0.12
+[2026-06-21 22:01:58] INFO [genai.query_rag:489] -> --- Final Sanitized User-Facing Chatbot Answer ---
+[2026-06-21 22:01:58] INFO [genai.query_rag:490] -> 
+Configuration Error: Please insert your valid Gemini API key inside agents.py.
+[2026-06-21 22:01:58] INFO [genai.query_rag:491] -> --------------------------------------------------
+[2026-06-21 22:04:37] INFO [genai.<module>:344] -> GenAI multi-agent application logging framework initiated successfully.
+[2026-06-21 22:04:53] INFO [genai.<module>:132] -> ingest module loaded
+[2026-06-21 22:05:30] INFO [genai.ingest_file_to_vectordb:176] -> Ingesting file: uploads\98a4133f-a812-4c37-9b5d-2767848663fb_Test_upload.pdf
+[2026-06-21 22:05:30] INFO [genai.ingest_file_to_vectordb:182] -> Created 3 chunks for uploads\98a4133f-a812-4c37-9b5d-2767848663fb_Test_upload.pdf
+[2026-06-21 22:05:38] INFO [genai.ingest_file_to_vectordb:195] -> Vector DB updated for uploads\98a4133f-a812-4c37-9b5d-2767848663fb_Test_upload.pdf
+[2026-06-21 22:05:40] INFO [genai.query_rag:437] -> --- New Inbound Request Received ---
+[2026-06-21 22:05:40] INFO [genai.query_rag:438] -> HTTP Payload Details -> Query: 'Summarise the document in 10 simple points', File Reference Session ID: None
+[2026-06-21 22:05:45] INFO [genai.run:189] -> [AgentManager] Starting Multi-Agent Pipeline Execution for query: 'Summarise the document in 10 simple points'
+[2026-06-21 22:05:51] INFO [genai.verify:171] -> [VerifierAgent] Beginning hallucination verification loop...
+[2026-06-21 22:05:51] INFO [genai.verify:179] -> [VerifierAgent] Completed verification. Score: 0.66
+[2026-06-21 22:05:51] INFO [genai.query_rag:489] -> --- Final Sanitized User-Facing Chatbot Answer ---
+[2026-06-21 22:05:51] INFO [genai.query_rag:490] -> 
+1. Ordered lists use ol for numbered items.
+2. Unordered lists use ul for bullet points.
+3. List items are defined with the li tag.
+4. Description lists use dl for terms and meanings.
+5. b or strong tags make text bold.
+6. i or em tags make text italic.
+7. Tables use tr for rows, th for headings.
+8. td tags are used for table data cells.
+9. CSS styles HTML content for better appearance.
+10. External CSS is the best styling method.
+[2026-06-21 22:05:51] INFO [genai.query_rag:491] -> --------------------------------------------------
+[2026-06-21 22:13:51] INFO [genai.<module>:344] -> GenAI multi-agent application logging framework initiated successfully.
+[2026-06-21 22:14:35] INFO [genai.<module>:24] -> ingest module loaded
+[2026-06-21 22:14:43] INFO [genai.<module>:38] -> GenAI multi-agent application logging framework initiated successfully.
+[2026-06-21 22:14:59] INFO [genai.<module>:24] -> ingest module loaded
