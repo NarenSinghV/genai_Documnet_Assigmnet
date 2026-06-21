@@ -32,10 +32,6 @@ chromadb/
 *.sqlite
 *.db
 
-# Uploads and runtime artifacts
-uploads/
-*.log
-
 # Mac
 .DS_Store
 
