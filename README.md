@@ -4,58 +4,22 @@ Generative AI Autonomous Document Q&A (Capstone) — Multi-Agent RAG Platform po
 
 ## Overview
 
-This project implements an enterprise-grade Autonomous Retrieval-Augmented Generation (RAG) platform structured into a synchronized multi-agent workflow. The application features isolated document context matching, automatic validation metrics, and structured streaming logging.
+This project implements an enterprise-grade Autonomous Retrieval-Augmented Generation (RAG) pipeline structured into a synchronized multi-agent workflow. The application features isolated document context matching, automatic validation metrics, and structured streaming logging.
 
 ### System Components
 - **Inbound Ingestion Layer (`ingest.py`)**: PDF, CSV, Excel, and text processing using `PyPDF2` and `Pandas`. Extracted text is segmented natively via `RecursiveCharacterTextSplitter`.
 - **Persistent Vector Array (`vector_store.py`)**: Stores vector matrices locally using **ChromaDB**. High-performance local vector conversions are handled via a custom `all-MiniLM-L6-v2` SentenceTransformer adapter interface.
 - **Multi-Agent Orchestration Engine (`agents.py`)**: 
-  - `RetrievalAgent`: Pulls high-relevancy context blocks (\(k=5\)) isolated strictly by the file session handle.
+  - `RetrievalAgent`: Pulls high-relevancy context blocks (k=5) isolated strictly by the file session handle.
   - `ReasoningAgent`: Generates high-density summaries using the modern stable **Google Gemini 2.5 Flash** runtime engine.
   - `VerifierAgent`: A hallucination guardrail agent that performs real-time token proximity checks to establish string correctness scores.
 - **Enterprise Router (`main.py`)**: A production FastAPI server handling session state tracking, text sanitization formatting, and logging.
 
 ---
 
-## Technical Architecture Diagram
+## Technical Architecture
 
-```text
-                               ┌───────────────────────────────┐
-                               │     User UI Interface Layer   │
-                               └───────────────┬───────────────┘
-                                               │
-                    ┌──────────────────────────┴──────────────────────────┐
-                    ▼ (POST /upload)                                      ▼ (POST /query_rag)
-┌──────────────────────────────────────┐               ┌──────────────────────────────────────┐
-│ Inbound Ingestion Pipeline (ingest)   │               │ Multi-Agent Framework Core (agents)  │
-├──────────────────────────────────────┤               ├──────────────────────────────────────┤
-│ • PyPDF2 / Pandas Content Extractor  │               │ • Request Payload Session Mapper     │
-│ • Recursive Character Token Splitter │               │ • Dynamic Token Context Evaluator    │
-│ • Key-Isolated Metadata Tagger       │               │ • Real-time UTF-8 File Logger        │
-└──────────────────┬───────────────────┘               └──────────────────┬───────────────────┘
-                   │                                                      │
-                   │ (Write Vector Collections)                           │ (Orchestrated Pipeline Execution)
-                   ▼                                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                             Enterprise Vector Database Storage Array (ChromaDB)                     │
-│                             Embedding Base Transformation Engine: all-MiniLM-L6-v2                  │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────┘
-                                                                          │
-       ┌──────────────────────────────────────────────────────────────────┴────────────────────────────────┐
-       ▼ (1. Semantic Lookup)                                             ▼ (2. Prompt Synthesis)          ▼ (3. Guardrail Match)
-┌──────────────────────────────┐                                   ┌──────────────────────────────┐ ┌──────────────────────────────┐
-│       RetrievalAgent         │                                   │        ReasoningAgent        │ │        VerifierAgent         │
-├──────────────────────────────┤                                   ├──────────────────────────────┤ ├──────────────────────────────┤
-│ Fetches optimal context maps │                                   │ Generates high-density summaries│ Calculates context proximity │
-│ utilizing source file-level  │──────────────────────────────────►│ using Google Gemini 2.5      │►│ tokens to establish          │
-│ metadata filters (k=5).      │                                   │ Flash core engines.          │ │ factual verification scores. │
-└──────────────────────────────┘                                   └──────────────────────────────┘ └──────────────────────────────┘
-                                                                                                                   │
-                                                                                                                   ▼
-                                                                                                    ┌──────────────────────────────┐
-                                                                                                    │     Sanitised User Screen    │
-                                                                                                    └──────────────────────────────┘
-```
+![Multi-Agent RAG System Architecture](https://prodia.xyz)
 
 ---
 
@@ -86,19 +50,19 @@ GEMINI_API_KEY=AIzaSyYourActualGoogleAIStudioKeyHere
 ```
 
 ### 5. Ingest Documents
-Use the interactive frontend by navigating to `http://127.0.0.1:8000/` or use the provided Python uploader tool:
+Use the interactive frontend by navigating to `http://127.0.0` or use the provided Python uploader tool:
 ```powershell
 & .\.venv\Scripts\python.exe upload_test.py
 ```
 Alternatively, upload files using cURL:
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8000/upload" -F "file=@uploads/your_document.pdf"
+curl.exe -X POST "http://127.0.0upload" -F "file=@uploads/your_document.pdf"
 ```
 
 ### 6. Query the Multi-Agent RAG Endpoint
 Submit a request using cURL to fetch an ultra-clean, text-sanitized, human-readable chatbot response:
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8000/query_rag" -H "Content-Type: application/json" -d "{\"q\":\"Summarise the document in 10 simple points\"}"
+curl.exe -X POST "http://127.0.0query_rag" -H "Content-Type: application/json" -d "{\"q\":\"Summarise the document in 10 simple points\"}"
 ```
 
 ---
