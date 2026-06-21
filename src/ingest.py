@@ -1,5 +1,6 @@
 import os
 from typing import List, Dict, Any
+import logging
 
 # robust import for different langchain versions / packages
 try:
@@ -17,6 +18,12 @@ except Exception:
             ) from e
 
 from .vector_store import create_or_update_vector_store
+
+logger = logging.getLogger("genai")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
+logger.info("ingest module loaded")
 
 
 def load_text_from_file(path: str) -> str:
@@ -61,10 +68,13 @@ def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> L
 def ingest_file_to_vectordb(path: str, metadata: Dict[str, Any] = None, persist_directory: str = "./chromadb"):
     """Load file, chunk text with metadata, and add to persistent vector DB."""
     metadata = metadata or {}
+    logger.info("Ingesting file: %s", path)
     text = load_text_from_file(path)
     if not text:
+        logger.warning("No text extracted from file: %s", path)
         return None
     chunks = chunk_text(text)
+    logger.info("Created %s chunks for %s", len(chunks), path)
     # build metadata per chunk for provenance
     metadatas = []
     for i, c in enumerate(chunks):
@@ -76,11 +86,12 @@ def ingest_file_to_vectordb(path: str, metadata: Dict[str, Any] = None, persist_
         metadatas.append(meta)
     try:
         vectordb = create_or_update_vector_store(chunks, metadatas=metadatas, persist_directory=persist_directory)
+        logger.info("Vector DB updated for %s", path)
         return vectordb
     except Exception as e:
         # Log the error and continue — mark vectordb as not created so uploads still succeed.
         # This commonly happens when the installed chromadb requires migration or different client API.
-        print(f"[ingest] vectordb creation failed: {e}")
+        logger.exception("vectordb creation failed for %s: %s", path, e)
         return None
 
 

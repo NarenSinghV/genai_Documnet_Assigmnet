@@ -14,3 +14,4 @@ pandas
 pytest
 flake8
 coverage
+sentence-transformers huggingface-hub
