@@ -2,7 +2,6 @@ import os
 from typing import List, Dict, Any
 import logging
 
-# robust import for different langchain versions / packages
 try:
     from langchain.text_splitter import RecursiveCharacterTextSplitter
 except Exception:
@@ -10,7 +9,6 @@ except Exception:
         from langchain.text_splitters import RecursiveCharacterTextSplitter
     except Exception:
         try:
-            # some environments provide a separate package
             from langchain_text_splitters import RecursiveCharacterTextSplitter
         except Exception as e:
             raise ImportError(
@@ -30,7 +28,6 @@ def load_text_from_file(path: str) -> str:
     _, ext = os.path.splitext(path)
     ext = ext.lower()
     if ext == ".pdf":
-        # robust PDF parsing with PyPDF2
         try:
             from PyPDF2 import PdfReader
             reader = PdfReader(path)
@@ -60,7 +57,7 @@ def load_text_from_file(path: str) -> str:
             return ""
 
 
-def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 100) -> List[str]:
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return splitter.split_text(text)
 
@@ -75,13 +72,14 @@ def ingest_file_to_vectordb(path: str, metadata: Dict[str, Any] = None, persist_
         return None
     chunks = chunk_text(text)
     logger.info("Created %s chunks for %s", len(chunks), path)
-    # build metadata per chunk for provenance
+    
     metadatas = []
     for i, c in enumerate(chunks):
         meta = dict(metadata)
+        # Ensure the filename key aligns perfectly with downstream filters
         meta.update({
-            "source": os.path.basename(path),
-            "chunk_index": i,
+            "source": str(os.path.basename(path)),
+            "chunk_index": int(i),
         })
         metadatas.append(meta)
     try:
@@ -89,8 +87,6 @@ def ingest_file_to_vectordb(path: str, metadata: Dict[str, Any] = None, persist_
         logger.info("Vector DB updated for %s", path)
         return vectordb
     except Exception as e:
-        # Log the error and continue — mark vectordb as not created so uploads still succeed.
-        # This commonly happens when the installed chromadb requires migration or different client API.
         logger.exception("vectordb creation failed for %s: %s", path, e)
         return None
 

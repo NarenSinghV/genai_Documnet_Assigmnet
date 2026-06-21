@@ -1,115 +1,144 @@
-# genai_Documnet_Assigmnet
+# GenAI Document Agent Platform
 
-Generative AI Document Q&A (Capstone) — RAG using HuggingFace embeddings + ChromaDB
+Generative AI Autonomous Document Q&A (Capstone) — Multi-Agent RAG Platform powered by HuggingFace embeddings, ChromaDB, and the official Google GenAI SDK.
 
 ## Overview
 
-This project implements a Retrieval-Augmented Generation (RAG) pipeline that runs locally:
+This project implements an enterprise-grade Autonomous Retrieval-Augmented Generation (RAG) platform structured into a synchronized multi-agent workflow. The application features isolated document context matching, automatic validation metrics, and structured streaming logging.
 
-- PDF / file upload -> text extraction
-- Text chunking
-- Local embeddings (HuggingFace) — no external API required by default
-- ChromaDB (persistent vector store)
-- Semantic search (top-K retrieval)
-- Answer generation from retrieved context (simple prompt executor / agent scaffold)
+### System Components
+- **Inbound Ingestion Layer (`ingest.py`)**: PDF, CSV, Excel, and text processing using `PyPDF2` and `Pandas`. Extracted text is segmented natively via `RecursiveCharacterTextSplitter`.
+- **Persistent Vector Array (`vector_store.py`)**: Stores vector matrices locally using **ChromaDB**. High-performance local vector conversions are handled via a custom `all-MiniLM-L6-v2` SentenceTransformer adapter interface.
+- **Multi-Agent Orchestration Engine (`agents.py`)**: 
+  - `RetrievalAgent`: Pulls high-relevancy context blocks (\(k=5\)) isolated strictly by the file session handle.
+  - `ReasoningAgent`: Generates high-density summaries using the modern stable **Google Gemini 2.5 Flash** runtime engine.
+  - `VerifierAgent`: A hallucination guardrail agent that performs real-time token proximity checks to establish string correctness scores.
+- **Enterprise Router (`main.py`)**: A production FastAPI server handling session state tracking, text sanitization formatting, and logging.
 
-Note: OpenAI integration is present in the repository but commented/outlined so you can run fully offline using HuggingFace embeddings.
+---
 
-## Quick start (Windows / PowerShell)
+## Technical Architecture Diagram
 
-1. Create and activate a virtual environment (if not already present):
-   py -3 -m venv .venv
-   . .\.venv\Scripts\Activate.ps1
+```text
+                               ┌───────────────────────────────┐
+                               │     User UI Interface Layer   │
+                               └───────────────┬───────────────┘
+                                               │
+                    ┌──────────────────────────┴──────────────────────────┐
+                    ▼ (POST /upload)                                      ▼ (POST /query_rag)
+┌──────────────────────────────────────┐               ┌──────────────────────────────────────┐
+│ Inbound Ingestion Pipeline (ingest)   │               │ Multi-Agent Framework Core (agents)  │
+├──────────────────────────────────────┤               ├──────────────────────────────────────┤
+│ • PyPDF2 / Pandas Content Extractor  │               │ • Request Payload Session Mapper     │
+│ • Recursive Character Token Splitter │               │ • Dynamic Token Context Evaluator    │
+│ • Key-Isolated Metadata Tagger       │               │ • Real-time UTF-8 File Logger        │
+└──────────────────┬───────────────────┘               └──────────────────┬───────────────────┘
+                   │                                                      │
+                   │ (Write Vector Collections)                           │ (Orchestrated Pipeline Execution)
+                   ▼                                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                             Enterprise Vector Database Storage Array (ChromaDB)                     │
+│                             Embedding Base Transformation Engine: all-MiniLM-L6-v2                  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                                          │
+       ┌──────────────────────────────────────────────────────────────────┴────────────────────────────────┐
+       ▼ (1. Semantic Lookup)                                             ▼ (2. Prompt Synthesis)          ▼ (3. Guardrail Match)
+┌──────────────────────────────┐                                   ┌──────────────────────────────┐ ┌──────────────────────────────┐
+│       RetrievalAgent         │                                   │        ReasoningAgent        │ │        VerifierAgent         │
+├──────────────────────────────┤                                   ├──────────────────────────────┤ ├──────────────────────────────┤
+│ Fetches optimal context maps │                                   │ Generates high-density summaries│ Calculates context proximity │
+│ utilizing source file-level  │──────────────────────────────────►│ using Google Gemini 2.5      │►│ tokens to establish          │
+│ metadata filters (k=5).      │                                   │ Flash core engines.          │ │ factual verification scores. │
+└──────────────────────────────┘                                   └──────────────────────────────┘ └──────────────────────────────┘
+                                                                                                                   │
+                                                                                                                   ▼
+                                                                                                    ┌──────────────────────────────┐
+                                                                                                    │     Sanitised User Screen    │
+                                                                                                    └──────────────────────────────┘
+```
 
-2. Install Python dependencies:
-   .\.venv\Scripts\python.exe -m pip install --upgrade pip
-   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+---
 
-3. Configure environment variables:
-   - Copy `.env.example` to `.env` and edit as needed.
-   - `OPENAI_API_KEY` is optional if you plan to use OpenAI features; the default project uses HuggingFace embeddings so a key is not required.
-   - `CHROMA_PERSIST_DIRECTORY` (default: `./chromadb`) is where Chroma stores persisted vectors.
+## Quick Start (Windows / PowerShell)
 
-4. Start the API server (use the venv Python to ensure correct packages):
-   .\.venv\Scripts\python.exe -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
+### 1. Create and Activate a Virtual Environment
+```powershell
+py -3 -m venv .venv
+. .\.venv\Scripts\Activate.ps1
+```
 
-5. Ingest documents (upload) — examples:
-   - Use the provided Python test uploader `upload_test.py` in the repo root (recommended on Windows to avoid shell quoting issues):
-     & .\.venv\Scripts\python.exe upload_test.py
+### 2. Install Dependencies
+```powershell
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install google-genai python-dotenv langchain-community sentence-transformers PyPDF2 pandas openpyxl
+```
 
-   - Or use curl (careful with filenames containing & or spaces):
-     curl.exe -X POST "http://127.0.0.1:8000/upload" -F "file=@uploads/yourfile.pdf"
+### 3. Configure Environment Variables
+Create a file named `.env` in the root folder of the project. Declare your credentials exactly like this:
+```env
+GEMINI_API_KEY=AIzaSyYourActualGoogleAIStudioKeyHere
+```
 
-6. Query the RAG endpoint
-   - /query returns raw snippets
-   - /query_rag returns an answer generated from retrieved context
-   - /query_agent runs the agent orchestration (retrieval -> reasoning -> verification)
+### 4. Start the API Server
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-## Run locally (Windows / PowerShell)
+### 5. Ingest Documents
+Use the interactive frontend by navigating to `http://127.0.0.1:8000/` or use the provided Python uploader tool:
+```powershell
+& .\.venv\Scripts\python.exe upload_test.py
+```
+Alternatively, upload files using cURL:
+```powershell
+curl.exe -X POST "http://127.0.0.1:8000/upload" -F "file=@uploads/your_document.pdf"
+```
 
-1. Create and activate virtual environment
+### 6. Query the Multi-Agent RAG Endpoint
+Submit a request using cURL to fetch an ultra-clean, text-sanitized, human-readable chatbot response:
+```powershell
+curl.exe -X POST "http://127.0.0.1:8000/query_rag" -H "Content-Type: application/json" -d "{\"q\":\"Summarise the document in 10 simple points\"}"
+```
 
-   py -3 -m venv .venv
-   . .\.venv\Scripts\Activate.ps1
+---
 
-2. Upgrade pip and install project dependencies
+## Production Diagnostics & Logging
 
-   .\.venv\Scripts\python.exe -m pip install --upgrade pip
-   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-   # ensure langchain text-splitters and chromadb are available
-   .\.venv\Scripts\python.exe -m pip install "langchain[text-splitters]" chromadb langchain-openai
+The platform includes a real-time event logging system. Every file conversion, semantic retrieval step, LLM token communication event, verification audit score, and final user response block is printed to the terminal console and permanently saved to a file called `app.log` in the root folder.
 
-3. Start the FastAPI server (use the venv Python)
+### Sample In-Line Trace Log Format:
+```text
+[2026-06-21 21:49:34] INFO [genai.run:45] -> [AgentManager] Starting Multi-Agent Pipeline Execution for query: 'Summarise the document in 10 simple points'
+[2026-06-21 21:49:34] INFO [genai.run:47] -> [RetrievalAgent] Fetching semantic contexts matching query. Target file filter: ad9e2ff4_Test_upload.pdf
+[2026-06-21 21:49:34] INFO [genai.run:52] -> [RetrievalAgent] Successfully gathered 5 relevant context blocks.
+[2026-06-21 21:49:34] INFO [genai.run:56] -> [ReasoningAgent] Dispatching synchronized structured content payload to Gemini core engine...
+[2026-06-21 21:49:41] INFO [genai.run:58] -> [ReasoningAgent] Received raw execution text stream response (Length: 1140 characters).
+[2026-06-21 21:49:41] INFO [genai.verify:14] -> [VerifierAgent] Beginning hallucination verification loop...
+[2026-06-21 21:49:41] INFO [genai.verify:24] -> [VerifierAgent] Completed verification. Score: 0.76
+[2026-06-21 21:49:41] INFO [genai.query_rag:95] -> --- Final Sanitized User-Facing Chatbot Answer ---
+1. HTML lists are used to group items together to improve readability.
+2. There are three types of lists: Ordered List, Unordered List, and Description List.
+...
+```
 
-   .\.venv\Scripts\python.exe -m uvicorn src.main:app --reload --host 127.0.0.1 --port 8000
-
-4. Upload a file (recommended: use the provided Python uploader to avoid shell quoting issues)
-
-   & .\.venv\Scripts\python.exe upload_test.py
-
-   Or with curl (careful with filenames that contain spaces or &):
-
-   curl.exe -X POST "http://127.0.0.1:8000/upload" -F "file=@uploads/yourfile.pdf"
-
-5. Query the RAG endpoint (example using curl)
-
-   curl.exe -X POST "http://127.0.0.1:8000/query_rag" -F "q=What is the deadline for submission?"
-
-6. Run tests
-
-   .\.venv\Scripts\python.exe -m pytest -q
+---
 
 ## Troubleshooting
 
-- If you see errors about missing langchain.text_splitter, run:
-
-  .\.venv\Scripts\python.exe -m pip install "langchain[text-splitters]"
-
-
-- If uploads complete but `vectordb` is false in the response, inspect the corresponding status JSON in `uploads/status/<id>.json` for errors (common: Chroma migration warning).
-- If Chroma reports a deprecated configuration and you do not need existing data, remove the persisted directory and re-ingest:
+- **Configuration Error Message**: If your interface shows a `Configuration Error` screen, double-check that your `.env` file is in the root directory and that the `GEMINI_API_KEY` name is spelled correctly without spaces.
+- **Chroma DB Migration Issues**: If your application crashes after a framework dependency update, safely delete old local collection data using PowerShell to force clean serialization:
+  ```powershell
   Remove-Item -Recurse -Force .\chromadb
+  ```
+- **Text Truncation Bugs**: If points cut off mid-sentence, it means your `k` context lookups are pulling too much text or too little. The codebase is pre-configured to `k=5`, which balances context size and model token limits perfectly.
 
-- If you need to preserve an existing Chroma DB, follow the migration instructions and tool: `pip install chroma-migrate` and run `chroma-migrate` as described in the Chroma docs.
+---
 
-## Development notes
+## Repository Architecture Map
 
-- Embeddings: the code is configured to prefer a local HuggingFace embeddings provider. If you uncomment or enable OpenAI usage you must set `OPENAI_API_KEY` and accept external API usage.
-- Vector store: uses Chroma (chromadb). Ensure `chromadb` is installed in the same Python environment used to run the server.
-
-## Testing
-
-- Unit tests for ingestion exist in `tests/` and can be run with pytest from the venv:
-  .\.venv\Scripts\python.exe -m pytest -q
-
-## Security
-
-- Never commit secrets. `.env` is ignored by the recommended `.gitignore` in this repo.
-
-## Files of interest
-
-- `src/main.py` — FastAPI app and endpoints
-- `src/ingest.py` — document loaders, chunking, ingest pipeline
-- `src/vector_store.py` — embedding provider and Chroma wrapper
-- `src/agents.py` — agent orchestration (retrieval, reasoner, verifier)
-- `static/` — simple frontend for manual testing
+- `src/main.py` — FastAPI gateway router, real-time logging, and text sanitization engines.
+- `src/agents.py` — Multi-agent setup (`AgentManager`, `RetrievalAgent`, `ReasoningAgent`, `VerifierAgent`) using the `google-genai` SDK.
+- `src/ingest.py` — Multi-format file loaders (`PyPDF2`, `Pandas`), recursive data slicing, and metadata isolation filters.
+- `src/vector_store.py` — Local HuggingFace SentenceTransformer wrapper matching Chroma expectations.
+- `static/` — HTML/JS single-page frontend interface layer.
