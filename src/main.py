@@ -6,6 +6,9 @@ from pathlib import Path
 import uuid
 import json
 import re
+import logging
+import os
+import requests
 from typing import List, Optional
 
 from sentence_transformers import SentenceTransformer, util
@@ -34,6 +37,60 @@ WEB_DIR = Path(__file__).parent.parent / "static"
 if WEB_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
+# configure logger
+logger = logging.getLogger("genai")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/text-bison-001")
+
+
+def _call_gemini(prompt: str, max_output_tokens: int = 512, model: str = None) -> str:
+    """Call Google Generative Language (Gemini) REST API using an API key.
+    Expects GEMINI_API_KEY in environment. Model should be a valid model name
+    such as 'models/text-bison-001' or a Gemini model if available.
+    This function tries to parse common response shapes and falls back to
+    raising a clear exception.
+    """
+    mdl = model or GEMINI_MODEL
+    api_key = GEMINI_API_KEY
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY not set in environment")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta2/{mdl}:generateText?key={api_key}"
+    payload = {
+        "prompt": {"text": prompt},
+        "maxOutputTokens": max_output_tokens
+    }
+    headers = {"Content-Type": "application/json"}
+    logger.info("Calling Gemini model %s (tokens=%s)", mdl, max_output_tokens)
+    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+    if resp.status_code != 200:
+        logger.error("Gemini API error %s: %s", resp.status_code, resp.text)
+        raise RuntimeError(f"Gemini API error {resp.status_code}: {resp.text}")
+    data = resp.json()
+    # try common shapes
+    text = None
+    if isinstance(data, dict):
+        # v1beta2: candidates -> [ { "output": "..." } ] or { "candidates": [ {"content": ...} ] }
+        if "candidates" in data and isinstance(data["candidates"], list) and data["candidates"]:
+            cand = data["candidates"][0]
+            text = cand.get("content") or cand.get("output") or cand.get("text")
+        if not text and "output" in data:
+            # some responses put text directly
+            out = data.get("output")
+            if isinstance(out, dict):
+                text = out.get("text") or out.get("content")
+            elif isinstance(out, str):
+                text = out
+    if not text:
+        # last resort: stringify
+        text = data.get("candidates", [{}])[0].get("content") if isinstance(data, dict) else None
+    if not text:
+        raise RuntimeError("Could not parse Gemini response: %s" % (data,))
+    return text.strip()
+
 # -------------------------
 # Root
 # -------------------------
@@ -58,6 +115,7 @@ async def root():
 # -------------------------
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
+    logger.info("Upload request received: %s", getattr(file, "filename", "<no-name>"))
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
@@ -83,7 +141,9 @@ async def upload(file: UploadFile = File(...)):
             "status": "done",
             "vectordb": bool(vectordb)
         }))
+        logger.info("Ingest completed for %s, vectordb=%s", filename, bool(vectordb))
     except Exception as e:
+        logger.exception("Ingest failed for %s", filename)
         status_file.write_text(json.dumps({
             "id": file_id,
             "filename": filename,
@@ -182,68 +242,64 @@ async def query_rag(payload: QueryRequest = Depends(get_query_payload)):
         meta = json.loads(status_file.read_text())
         source_name = meta.get("filename")
 
-    # -----------------------------
-    # Load vector DB
-    # -----------------------------
     vectordb = load_vectordb()
     if not vectordb:
         raise HTTPException(status_code=400, detail="Vector DB not found")
 
-    # -----------------------------
-    # STEP 1: Perform search (filtered by document if source_name set)
-    # -----------------------------
+    logger.info("Query received. q=%s, file_id=%s, source_name=%s", q, file_id, source_name)
+
     try:
         if source_name:
-            results = vectordb.similarity_search(
-                q,
-                k=12,
-                filter={"source": source_name}
-            )
+            results = vectordb.similarity_search(q, k=12, filter={"source": source_name})
         else:
             results = vectordb.similarity_search(q, k=12)
     except TypeError:
-        # some vectorstores may not accept filter kwarg
         results = vectordb.similarity_search(q, k=12)
 
     if not results:
+        logger.info("No results for query: %s", q)
         return {
             "query": q,
             "answer": "No relevant content found in this document." if source_name else "No relevant content found.",
             "sources": []
         }
 
-    # -----------------------------
-    # STEP 2: Rerank results (IMPORTANT FIX)
-    # -----------------------------
     docs = [r.page_content for r in results]
 
-    q_emb = _embedder.encode(q, convert_to_tensor=True)
-    d_emb = _embedder.encode(docs, convert_to_tensor=True)
-
-    scores = util.cos_sim(q_emb, d_emb)[0]
-
-    top_k = min(4, len(docs))
-    top_indices = scores.argsort(descending=True)[:top_k]
+    # Rerank using sentence-transformers
+    try:
+        q_emb = _embedder.encode(q, convert_to_tensor=True)
+        d_emb = _embedder.encode(docs, convert_to_tensor=True)
+        scores = util.cos_sim(q_emb, d_emb)[0]
+        top_k = min(6, len(docs))
+        top_indices = scores.argsort(descending=True)[:top_k]
+    except Exception:
+        logger.exception("Rerank failed, falling back to original ordering")
+        top_indices = list(range(min(4, len(docs))))
 
     selected_chunks = [docs[i] for i in top_indices]
+    context = "\n\n".join(_clean_text(chunk) for chunk in selected_chunks)
 
-    # -----------------------------
-    # STEP 3: Clean + build context
-    # -----------------------------
-    context = "\n\n".join(
-        _clean_text(chunk) for chunk in selected_chunks
+    # Build a prompt for Gemini
+    prompt = (
+        "You are an assistant that answers user questions using the provided document context. "
+        "Use only the context to answer and cite sources by filename and chunk index when relevant.\n\n"
+        f"Context:\n{context}\n\nQuestion: {q}\n\nAnswer in concise English (no bullet points):"
     )
 
-    # -----------------------------
-    # STEP 4: Generate answer
-    # -----------------------------
-    answer = _answer_from_context(context, q)
+    # Call Gemini; if not configured or call fails, fall back to local extractor
+    try:
+        gemini_resp = _call_gemini(prompt)
+        answer = gemini_resp
+        logger.info("Gemini responded successfully for q=%s", q)
+    except Exception as e:
+        logger.exception("Gemini call failed, falling back to local extractor: %s", e)
+        answer = _answer_from_context(context, q)
 
-    # -----------------------------
-    # STEP 5: return structured response
-    # -----------------------------
+    sources = format_provenance([results[i] for i in top_indices])
+
     return {
         "query": q,
         "answer": answer,
-        "sources": format_provenance([results[i] for i in top_indices])
+        "sources": sources
     }
